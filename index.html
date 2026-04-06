@@ -523,7 +523,7 @@ function doGet() {
     // ============================================================
     // ⚠️ 【重要】请将下方 URL 替换为您自己部署的 Google Apps Script Web App 地址
     // 例如: const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxxxxx/exec';
-    const APPS_SCRIPT_URL = 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE';   // <--- 替换成您的URL
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwNDT36kOXBu4pMjnf6ilZv_OULMdugbl-Q5J7p_dLIjpPllr1hXVgrVnhVNwczWZAH/exec';   // <--- 替换成您的URL
     // ============================================================
     
     // DOM 元素
@@ -575,7 +575,7 @@ function doGet() {
     
     async function submitToSheet(formDataObj) {
         // 检查是否配置了 URL
-        if (APPS_SCRIPT_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+        if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwNDT36kOXBu4pMjnf6ilZv_OULMdugbl-Q5J7p_dLIjpPllr1hXVgrVnhVNwczWZAH/exec') {
             showMessage('⚠️ 尚未配置 Google Apps Script 网址！请先按照「配置教程」部署脚本并替换 APPS_SCRIPT_URL。', 'error');
             return false;
         }
@@ -650,7 +650,7 @@ function doGet() {
     });
     
     // 控制台提醒
-    if (APPS_SCRIPT_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+    if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbwNDT36kOXBu4pMjnf6ilZv_OULMdugbl-Q5J7p_dLIjpPllr1hXVgrVnhVNwczWZAH/exec') {
         console.warn('⚠️ 请将 APPS_SCRIPT_URL 变量替换为您的 Google Apps Script Web App 地址，否则无法同步数据！');
     } else {
         console.log('✅ 后端地址已配置: ', APPS_SCRIPT_URL);
@@ -661,7 +661,7 @@ function doGet() {
     if (heroTitle) {
         heroTitle.style.cursor = 'pointer';
         heroTitle.addEventListener('dblclick', () => {
-            if (APPS_SCRIPT_URL !== 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+            if (APPS_SCRIPT_URL !== 'https://script.google.com/macros/s/AKfycbwNDT36kOXBu4pMjnf6ilZv_OULMdugbl-Q5J7p_dLIjpPllr1hXVgrVnhVNwczWZAH/exec') {
                 showMessage(`当前后端地址: ${APPS_SCRIPT_URL.substring(0, 55)}...`, 'loading');
                 setTimeout(() => hideMessage(), 2000);
             } else {

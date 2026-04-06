@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>房产数据同步系统 | 自动写入 Google Sheets</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+        }
+
+        /* 主卡片 */
+        .form-card {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        /* 头部 */
+        .hero {
+            background: #0f3b2c;
+            padding: 1.8rem 2rem;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hero h1::before {
+            content: "🏘️";
+            font-size: 2rem;
+        }
+
+        .hero p {
+            margin-top: 0.5rem;
+            opacity: 0.85;
+            border-left: 3px solid #fbbf24;
+            padding-left: 1rem;
+            font-size: 0.9rem;
+        }
+
+        /* 表单主体 */
+        .form-body {
+            padding: 2rem 2rem 1.5rem;
+        }
+
+        /* 两列网格布局 (大屏幕) */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem 2rem;
+        }
+
+        /* 全宽字段 (Images, 提交按钮等) */
+        .full-width {
+            grid-column: span 2;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-field label {
+            font-weight: 600;
+            color: #1e2f3e;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-field label .optional {
+            font-weight: normal;
+            font-size: 0.7rem;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 20px;
+            color: #4b6a8b;
+        }
+
+        input, select, textarea {
+            padding: 0.75rem 1rem;
+            border: 1.5px solid #e2edf2;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            background: white;
+            outline: none;
+            width: 100%;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: #2c7da0;
+            box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.15);
+        }
+
+        /* 子字段组 (Land / Built) */
+        .subgroup {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .subgroup .input-field {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        hr {
+            margin: 1rem 0;
+            border: none;
+            border-top: 1px solid #e2edf2;
+        }
+
+        /* 按钮 */
+        .btn-submit {
+            background: #1e6f5c;
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-submit:hover {
+            background: #0e5a4a;
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:disabled {
+            background: #9ab3c2;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 状态消息 */
+        .status-message {
+            margin-top: 1.5rem;
+            padding: 0.8rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+            text-align: center;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .status-success {
+            background: #e0f2e9;
+            color: #0f5c3f;
+            border-left: 4px solid #2ecc71;
+            display: flex;
+        }
+
+        .status-error {
+            background: #fee9e6;
+            color: #b33c1f;
+            border-left: 4px solid #e67e22;
+            display: flex;
+        }
+
+        .status-loading {
+            background: #eef2fa;
+            color: #2c7da0;
+            border-left: 4px solid #3498db;
+            display: flex;
+        }
+
+        /* 折叠指南区域 */
+        .guide-section {
+            background: #f9fbfd;
+            border-top: 1px solid #e0edf5;
+            padding: 1rem 2rem 1.8rem;
+            font-size: 0.85rem;
+        }
+
+        .guide-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            color: #1e6f5c;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .guide-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease-out;
+        }
+
+        .guide-content.open {
+            max-height: 1100px;
+            margin-top: 1rem;
+        }
+
+        code {
+            background: #eef2f5;
+            padding: 0.2rem 0.4rem;
+            border-radius: 8px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        pre {
+            background: #1e2a36;
+            color: #eef2fb;
+            padding: 1rem;
+            border-radius: 14px;
+            overflow-x: auto;
+            font-size: 0.75rem;
+            font-family: monospace;
+            margin: 0.8rem 0;
+        }
+
+        .badge {
+            background: #d4e3fd;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            color: #5e7c97;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 780px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 1.2rem;
+            }
+            .full-width {
+                grid-column: span 1;
+            }
+            .form-body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="form-card">
+    <div class="hero">
+        <h1>房产智能同步系统</h1>
+        <p>填写房地产资料 → 一键同步至 Google Sheets · 所有字段均可选留空</p>
+    </div>
+
+    <div class="form-body">
+        <form id="propertyForm">
+            <div class="form-grid">
+                <!-- 1. Title -->
+                <div class="input-field full-width">
+                    <label>🏷️ Title (房产名称) <span class="optional">可长串文字</span></label>
+                    <input type="text" id="title" placeholder="例: 湖畔豪华别墅 / 市中心景观公寓" autocomplete="off">
+                </div>
+
+                <!-- 2. Area 下拉 (1~10 + 空白) -->
+                <div class="input-field">
+                    <label>📍 Area (地区代号)</label>
+                    <select id="area">
+                        <option value="">-- 请选择 (留空) --</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+
+                <!-- Size 子分类: Land Area + Built Up -->
+                <div class="input-field">
+                    <label>📐 土地面积 (Land Area)</label>
+                    <input type="text" id="landArea" placeholder="例如: 3500 sq ft / 300 m²">
+                </div>
+                <div class="input-field">
+                    <label>🏠 建筑面积 (Built Up)</label>
+                    <input type="text" id="builtUp" placeholder="例如: 2800 sq ft">
+                </div>
+
+                <!-- 4. Bedroom -->
+                <div class="input-field">
+                    <label>🛏️ Bedroom (卧室)</label>
+                    <select id="bedroom">
+                        <option value="">-- 未选择 --</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+
+                <!-- 5. Bathroom -->
+                <div class="input-field">
+                    <label>🛁 Bathroom (浴室)</label>
+                    <select id="bathroom">
+                        <option value="">-- 未选择 --</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+
+                <!-- 6. Condition 文本 -->
+                <div class="input-field">
+                    <label>🔧 Condition (房屋状况)</label>
+                    <input type="text" id="condition" placeholder="例: 全新/良好/需翻新/精装修">
+                </div>
+
+                <!-- 7. Renovate -->
+                <div class="input-field">
+                    <label>🔨 Renovate (装修程度)</label>
+                    <select id="renovate">
+                        <option value="">-- 未选择 --</option>
+                        <option value="full">full</option>
+                        <option value="partial">partial</option>
+                        <option value="no">no</option>
+                    </select>
+                </div>
+
+                <!-- 8. Furnish -->
+                <div class="input-field">
+                    <label>🛋️ Furnish (家私)</label>
+                    <select id="furnish">
+                        <option value="">-- 未选择 --</option>
+                        <option value="full">full</option>
+                        <option value="partial">partial</option>
+                        <option value="no">no</option>
+                    </select>
+                </div>
+
+                <!-- 9. Parking 1~5 -->
+                <div class="input-field">
+                    <label>🚗 Parking (车位)</label>
+                    <select id="parking">
+                        <option value="">-- 未选择 --</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option>
+                    </select>
+                </div>
+
+                <!-- 10. Tenure -->
+                <div class="input-field">
+                    <label>📜 Tenure (产权)</label>
+                    <select id="tenure">
+                        <option value="">-- 未选择 --</option>
+                        <option value="freehold">freehold</option>
+                        <option value="leasehold">leasehold</option>
+                    </select>
+                </div>
+
+                <!-- 11. Type (sale/rent) -->
+                <div class="input-field">
+                    <label>💰 Type (交易类型)</label>
+                    <select id="type">
+                        <option value="">-- 未选择 --</option>
+                        <option value="sale">sale (出售)</option>
+                        <option value="rent">rent (出租)</option>
+                    </select>
+                </div>
+
+                <!-- 12. Price -->
+                <div class="input-field">
+                    <label>💵 Price (价格)</label>
+                    <input type="text" id="price" placeholder="例: RM 850,000 或 每月 RM 2500">
+                </div>
+
+                <!-- 13. Exclusive -->
+                <div class="input-field">
+                    <label>⭐ Exclusive (独家委托)</label>
+                    <select id="exclusive">
+                        <option value="">-- 未选择 --</option>
+                        <option value="yes">yes</option>
+                    </select>
+                </div>
+
+                <!-- 14. Images (长文本) -->
+                <div class="input-field full-width">
+                    <label>🖼️ Images (图片链接/代码)</label>
+                    <textarea id="images" rows="3" placeholder="可输入多个图片URL、Base64 或一串字符，长文本不限"></textarea>
+                    <div class="hint" style="font-size:0.7rem; color:#5e7c97;">支持长串字母、符号、数字，留空亦可</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <span>📤</span> 同步到 Google Sheets
+            </button>
+            <div id="statusMsg" class="status-message"></div>
+        </form>
+    </div>
+
+    <!-- 部署指南 + Apps Script 代码 (折叠) -->
+    <div class="guide-section">
+        <div class="guide-toggle" id="guideToggle">
+            <span>⚙️ 🔧 完整配置教程 + Google Apps Script 代码 (点击展开)</span>
+            <span>▼</span>
+        </div>
+        <div class="guide-content" id="guideContent">
+            <p><strong>📌 第一步：准备 Google Sheet 并部署后端脚本</strong></p>
+            <ol style="margin-left: 1.2rem; line-height: 1.5;">
+                <li>新建一个 Google Sheets 表格（例如命名“房地产数据库”）。</li>
+                <li>点击菜单 <code>扩展程序 → Apps 脚本</code>，删除默认代码，<strong>完整复制下方提供的代码</strong>并粘贴保存。</li>
+                <li>修改脚本中的 <strong>表头字段（如有需要）</strong> 我们已经预设好中文字段，与表单完全匹配。</li>
+                <li>点击编辑器左上角 <code>部署 → 新建部署</code> → 类型选择 <strong>Web 应用</strong>。<br>
+                - 执行身份：<strong>我</strong>；<br>
+                - 访问权限：<strong>任何人（甚至匿名）</strong>；<br>
+                - 点击“部署”，授权后得到 <strong>部署网址</strong> (类似 <code>https://script.google.com/macros/s/.../exec</code>)。</li>
+                <li><strong>复制该网址</strong>，稍后填入下方HTML代码中的变量 <code>APPS_SCRIPT_URL</code>。</li>
+            </ol>
+            <p><strong>📌 第二步：Apps Script 完整代码 (直接复制使用)</strong></p>
+            <pre><code>// ========== 请粘贴到 Google Apps 脚本编辑器 ==========
+function doPost(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const data = JSON.parse(e.postData.contents);
+    
+    // 定义表头（中文，与前端字段对应）
+    const headers = [
+      "时间戳", "标题(Title)", "地区(Area)", "土地面积(LandArea)", 
+      "建筑面积(BuiltUp)", "卧室(Bedroom)", "浴室(Bathroom)", "状况(Condition)",
+      "装修(Renovate)", "家私(Furnish)", "车位(Parking)", "产权(Tenure)",
+      "交易类型(Type)", "价格(Price)", "独家(Exclusive)", "图片(Images)"
+    ];
+    
+    // 检查首行，若无表头则写入
+    const headerRow = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+    if (headerRow.every(cell => cell === "" || cell === undefined)) {
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+    
+    // 构建行数据（顺序严格对应 headers）
+    const row = [
+      new Date().toLocaleString("zh-CN", {timeZone: "Asia/Shanghai"}),
+      data.title || "",
+      data.area || "",
+      data.landArea || "",
+      data.builtUp || "",
+      data.bedroom || "",
+      data.bathroom || "",
+      data.condition || "",
+      data.renovate || "",
+      data.furnish || "",
+      data.parking || "",
+      data.tenure || "",
+      data.type || "",
+      data.price || "",
+      data.exclusive || "",
+      data.images || ""
+    ];
+    
+    sheet.appendRow(row);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "success",
+      message: "房产数据已同步到 Google Sheet"
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "error",
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// GET 测试用
+function doGet() {
+  return ContentService.createTextOutput("✅ 服务运行正常，请使用 POST 方式提交房产数据。");
+}
+// ========== 脚本结束 ==========</code></pre>
+            <p><strong>📌 第三步：修改本网页中的后端地址</strong><br>
+            打开本HTML文件，找到下方 <code>⚠️ 请替换为您的 Apps Script URL</code> 的变量，将部署获得的网址赋值给 <code>APPS_SCRIPT_URL</code>。</p>
+            <p><strong>📌 第四步：将整个网页部署到 GitHub Pages (完全免费)</strong><br>
+            1. 创建一个新的 GitHub 仓库，例如 <code>property-sync-system</code>。<br>
+            2. 将本 HTML 代码保存为 <code>index.html</code> (确保文件名准确)。<br>
+            3. 在仓库中上传 <code>index.html</code>，然后进入 Settings → Pages → Branch 选择 <code>main</code> ，保存。<br>
+            4. 几分钟后即可通过 <code>https://你的用户名.github.io/仓库名/</code> 访问您的智能表单系统。<br>
+            ⭐ 随时随地填写资料，数据自动汇入 Google Sheets！</p>
+            <hr>
+            <div class="badge">💡 提示：所有下拉菜单均含空白选项，任何字段留空则 Google Sheets 对应单元格为空，完全符合需求。</div>
+            <footer>🔐 数据安全: 只有知道您部署的脚本地址才能提交，建议保持脚本权限为“任何人”以保证表单可用。</footer>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // ⚠️ 【重要】请将下方 URL 替换为您自己部署的 Google Apps Script Web App 地址
+    // 例如: const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxxxxx/exec';
+    const APPS_SCRIPT_URL = 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE';   // <--- 替换成您的URL
+    // ============================================================
+    
+    // DOM 元素
+    const form = document.getElementById('propertyForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusDiv = document.getElementById('statusMsg');
+    
+    function showMessage(text, type) {
+        statusDiv.innerHTML = '';
+        statusDiv.className = 'status-message';
+        const icon = type === 'success' ? '✅' : (type === 'error' ? '❌' : '⏳');
+        statusDiv.innerHTML = `<span>${icon} ${text}</span>`;
+        if (type === 'success') statusDiv.classList.add('status-success');
+        else if (type === 'error') statusDiv.classList.add('status-error');
+        else if (type === 'loading') statusDiv.classList.add('status-loading');
+        statusDiv.style.display = 'flex';
+        
+        if (type === 'success') {
+            setTimeout(() => {
+                if (statusDiv.classList.contains('status-success')) statusDiv.style.display = 'none';
+            }, 5000);
+        }
+    }
+    
+    function hideMessage() {
+        statusDiv.style.display = 'none';
+    }
+    
+    // 收集所有表单字段 (包括全部下拉、文本)
+    function collectFormData() {
+        return {
+            title: document.getElementById('title').value.trim(),
+            area: document.getElementById('area').value,
+            landArea: document.getElementById('landArea').value.trim(),
+            builtUp: document.getElementById('builtUp').value.trim(),
+            bedroom: document.getElementById('bedroom').value,
+            bathroom: document.getElementById('bathroom').value,
+            condition: document.getElementById('condition').value.trim(),
+            renovate: document.getElementById('renovate').value,
+            furnish: document.getElementById('furnish').value,
+            parking: document.getElementById('parking').value,
+            tenure: document.getElementById('tenure').value,
+            type: document.getElementById('type').value,
+            price: document.getElementById('price').value.trim(),
+            exclusive: document.getElementById('exclusive').value,
+            images: document.getElementById('images').value.trim()
+        };
+    }
+    
+    async function submitToSheet(formDataObj) {
+        // 检查是否配置了 URL
+        if (APPS_SCRIPT_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+            showMessage('⚠️ 尚未配置 Google Apps Script 网址！请先按照「配置教程」部署脚本并替换 APPS_SCRIPT_URL。', 'error');
+            return false;
+        }
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>⏳</span> 同步中，请稍后...';
+        showMessage('正在连接云端表格，上传房产资料...', 'loading');
+        
+        try {
+            const response = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'cors',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formDataObj)
+            });
+            
+            let result;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                throw new Error(`服务器返回非JSON: ${text.substring(0, 100)}`);
+            }
+            
+            if (response.ok && result.result === 'success') {
+                showMessage('✨ 提交成功！房产数据已自动写入 Google Sheets ✨', 'success');
+                form.reset();  // 清空所有字段
+                return true;
+            } else {
+                throw new Error(result.error || result.message || '未知错误');
+            }
+        } catch (error) {
+            console.error('提交失败:', error);
+            let errorMsg = '网络或服务器错误，同步失败。';
+            if (error.message) errorMsg += ` 详情: ${error.message}`;
+            if (!navigator.onLine) errorMsg = '网络连接失败，请检查网络后重试。';
+            if (APPS_SCRIPT_URL.includes('YOUR_DEPLOYED')) errorMsg = '未配置有效的 Apps Script URL，请先完成部署步骤。';
+            showMessage(`❌ ${errorMsg}`, 'error');
+            return false;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>📤</span> 同步到 Google Sheets';
+            // 错误提示保留较长时间
+            setTimeout(() => {
+                if (statusDiv.classList.contains('status-error')) statusDiv.style.display = 'none';
+            }, 6000);
+        }
+    }
+    
+    // 提交监听
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = collectFormData();
+        await submitToSheet(data);
+    });
+    
+    // 折叠引导区域交互
+    const toggleBtn = document.getElementById('guideToggle');
+    const guideContent = document.getElementById('guideContent');
+    let guideOpen = false;
+    toggleBtn.addEventListener('click', () => {
+        guideOpen = !guideOpen;
+        if (guideOpen) {
+            guideContent.classList.add('open');
+            toggleBtn.querySelector('span:last-child').innerHTML = '▲';
+        } else {
+            guideContent.classList.remove('open');
+            toggleBtn.querySelector('span:last-child').innerHTML = '▼';
+        }
+    });
+    
+    // 控制台提醒
+    if (APPS_SCRIPT_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+        console.warn('⚠️ 请将 APPS_SCRIPT_URL 变量替换为您的 Google Apps Script Web App 地址，否则无法同步数据！');
+    } else {
+        console.log('✅ 后端地址已配置: ', APPS_SCRIPT_URL);
+    }
+    
+    // 小彩蛋：双击标题显示配置状态
+    const heroTitle = document.querySelector('.hero h1');
+    if (heroTitle) {
+        heroTitle.style.cursor = 'pointer';
+        heroTitle.addEventListener('dblclick', () => {
+            if (APPS_SCRIPT_URL !== 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+                showMessage(`当前后端地址: ${APPS_SCRIPT_URL.substring(0, 55)}...`, 'loading');
+                setTimeout(() => hideMessage(), 2000);
+            } else {
+                showMessage('🔧 请先按下方教程部署 Google Apps Script 并填入 URL', 'error');
+            }
+        });
+    }
+</script>
+</body>
+</html>
